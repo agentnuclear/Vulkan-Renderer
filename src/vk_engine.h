@@ -5,12 +5,30 @@
 
 #include <vk_types.h>
 
+struct DeletionQueue {
+	std::deque<std::function<void()>> deletors;
+	//understand what a lambda function is
+	void push_function(std::function<void()>&& function) {
+		deletors.push_back(function);
+	}
+
+	void flush() {
+		for (auto it = deletors.rbegin(); it != deletors.rend(); it++) {
+			(*it)();
+		}
+		deletors.clear();
+	}
+};
+
 struct FrameData {
 	VkCommandPool _commandpool;
 	VkCommandBuffer _mainCommandBuffer;
 	VkSemaphore _swapchainSemaphore, _renderSemaphore;
 	VkFence _renderFence;
+	DeletionQueue _deletionQueue;
 };
+
+
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
@@ -46,6 +64,10 @@ public:
 	struct SDL_Window* _window{ nullptr };
 
 	static VulkanEngine& Get();
+	VmaAllocator _allocator;
+
+	AllocatedImage _drawImage;
+	VkExtent2D _drawExtent;
 
 	//initializes everything in the engine
 	void init();
@@ -55,6 +77,8 @@ public:
 
 	//draw loop
 	void draw();
+
+	void draw_background(VkCommandBuffer cmd);
 
 	//run main loop
 	void run();
@@ -66,4 +90,6 @@ private:
 	void init_sync_structures();
 	void create_swapchain(uint32_t width, uint32_t height);
 	void destroy_swapchain();
+
+	DeletionQueue _mainDeletionQueue;
 };
