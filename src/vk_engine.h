@@ -77,6 +77,13 @@ public:
 	VkPipeline _gradientPipeline;
 	VkPipelineLayout _gradientPipelineLayout;
 
+	//immidiate submit structures
+	VkFence _immFence;
+	VkCommandBuffer _immCommandBuffer;
+	VkCommandPool _immCommandPool;
+
+	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+
 	//initializes everything in the engine
 	void init();
 
@@ -87,6 +94,7 @@ public:
 	void draw();
 
 	void draw_background(VkCommandBuffer cmd);
+	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
 
 	//run main loop
 	void run();
@@ -101,6 +109,7 @@ private:
 	void init_descriptors();
 	void init_pipelines();
 	void init_background_pipelines();
+	void init_imgui();
 
 	DeletionQueue _mainDeletionQueue;
 };
