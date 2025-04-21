@@ -383,6 +383,55 @@ void VulkanEngine::init_background_pipelines()
         vkDestroyPipeline(_device, gradient.pipeline, nullptr);
 
         });
+
+    // Shader and pipeline for drawing the Triangle
+    VkShaderModule traingleFragShader;
+    if (!vkutil::load_shader_module("../../Vulkan-Renderer/shaders/colored_triangle.frag.spv", _device, &traingleFragShader)) {
+        fmt::println("Error when building triangle fragment shader module");
+    }
+    else {
+        fmt::println("triangle fragment shader module built successfully");
+    }
+
+    VkShaderModule traingleVertShader;
+    if (!vkutil::load_shader_module("../../Vulkan-Renderer/shaders/colored_triangle.vert.spv", _device, &traingleVertShader)) {
+        fmt::println("Error when building triangle vertex shader module");
+    }
+    else {
+        fmt::println("triangle vertex shader module built successfully");
+    }
+
+    //build the pipeline layout that controls the input/output of the shader
+    VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
+    VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
+
+    //Now we create the pipeline for the triangle
+    PipelineBuilder pipelineBuilder;
+
+    pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
+    pipelineBuilder.set_shaders(traingleVertShader, traingleFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.disable_depthtest();
+
+    //connect the image format we will draw into, from draw image
+    pipelineBuilder.set_color_attachment_format(_drawImage.imageFormat);
+    pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+
+    //finally build pipeline
+    _trianglePipeline = pipelineBuilder.build_pipeline(_device);
+
+    //cleam structures
+    vkDestroyShaderModule(_device, traingleFragShader, nullptr);
+    vkDestroyShaderModule(_device, traingleVertShader, nullptr);
+
+    _mainDeletionQueue.push_function([&]() {
+        vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
+        vkDestroyPipeline(_device, _trianglePipeline, nullptr);
+        });
 }
 
 void VulkanEngine::init_imgui()
@@ -501,8 +550,12 @@ void VulkanEngine::draw()
 
     draw_background(cmd);
 
+    vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    draw_geometry(cmd);
+
     //transition the draw image and the swapchain image into thier correct transfer layout
-    vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     //execute a copy from draw img to swapchain
     vkutil::copy_image_to_image(cmd, _drawImage.image, _swapchainImages[swapchainImageIndex], _drawExtent, _swapchainExtent);
@@ -574,6 +627,39 @@ void VulkanEngine::draw_background(VkCommandBuffer cmd)
 
     //execute the compute pipeline deispatch. we are using the 16x16 workgroup size so we need to divide by it
     vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);
+}
+
+void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
+{
+    //begin a render pass connected to out draw image
+    VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkRenderingInfo renderInfo = vkinit::rendering_info(_drawExtent, &colorAttachment, nullptr);
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+
+    //set dynamic viewpost and scissor
+    VkViewport viewport = {};
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = _drawExtent.width;
+    viewport.height = _drawExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor = {};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = _drawExtent.width;
+    scissor.extent.height = _drawExtent.height;
+
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    //launch a draw command to draw 3 vertices
+    vkCmdDraw(cmd, 3, 1, 0, 0);
+    vkCmdEndRendering(cmd);
 }
 
 void VulkanEngine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)

@@ -102,6 +102,11 @@ public:
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 
+	//Drawing the triangle
+	VkPipelineLayout _trianglePipelineLayout;
+	VkPipeline _trianglePipeline;
+	void init_triangle_pipeline();
+
 	//initializes everything in the engine
 	void init();
 
@@ -112,6 +117,7 @@ public:
 	void draw();
 
 	void draw_background(VkCommandBuffer cmd);
+	void draw_geometry(VkCommandBuffer cmd);
 	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
 
 	//run main loop
