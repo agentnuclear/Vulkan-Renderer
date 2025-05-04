@@ -113,6 +113,18 @@ public:
 	//shuts down the engine
 	void cleanup();
 
+	//buffer creation 
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+	void destroy_buffer(const AllocatedBuffer& buffer);
+	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+	
+	//drawing meshes
+	VkPipelineLayout _meshPipelineLayout;
+	VkPipeline _meshPipeline;
+	GPUMeshBuffers rectangle;
+
+	void init_mesh_pipeline();
+	void init_default_data();
 	//draw loop
 	void draw();
 
