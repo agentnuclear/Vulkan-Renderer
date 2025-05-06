@@ -87,6 +87,8 @@ public:
 	AllocatedImage _drawImage;
 	AllocatedImage _depthImage;
 	VkExtent2D _drawExtent;
+	float renderScale = 1.0f;
+
 
 	DescriptorAllocator globalDescriptorAllocator;
 	VkDescriptorSet _drawImageDescriptors;
@@ -125,7 +127,7 @@ public:
 	VkPipelineLayout _meshPipelineLayout;
 	VkPipeline _meshPipeline;
 	std::vector<std::shared_ptr<MeshAsset>> testMeshes;
-	
+	bool resize_requested;
 
 	void init_mesh_pipeline();
 	void init_default_data();
@@ -135,6 +137,7 @@ public:
 	void draw_background(VkCommandBuffer cmd);
 	void draw_geometry(VkCommandBuffer cmd);
 	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
+	void resize_swapchain();
 
 	//run main loop
 	void run();
