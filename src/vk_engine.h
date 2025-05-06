@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include <vk_loader.h>
 #include <vk_types.h>
 #include <vk_descriptors.h>
+
 
 struct DeletionQueue {
 	std::deque<std::function<void()>> deletors;
@@ -83,6 +85,7 @@ public:
 	VmaAllocator _allocator;
 
 	AllocatedImage _drawImage;
+	AllocatedImage _depthImage;
 	VkExtent2D _drawExtent;
 
 	DescriptorAllocator globalDescriptorAllocator;
@@ -102,10 +105,10 @@ public:
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
 
-	//Drawing the triangle
-	VkPipelineLayout _trianglePipelineLayout;
-	VkPipeline _trianglePipeline;
-	void init_triangle_pipeline();
+	////Drawing the triangle :: DELETED
+	//VkPipelineLayout _trianglePipelineLayout;
+	//VkPipeline _trianglePipeline;
+	//void init_triangle_pipeline();
 
 	//initializes everything in the engine
 	void init();
@@ -121,7 +124,8 @@ public:
 	//drawing meshes
 	VkPipelineLayout _meshPipelineLayout;
 	VkPipeline _meshPipeline;
-	GPUMeshBuffers rectangle;
+	std::vector<std::shared_ptr<MeshAsset>> testMeshes;
+	
 
 	void init_mesh_pipeline();
 	void init_default_data();
