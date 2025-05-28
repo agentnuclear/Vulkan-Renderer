@@ -58,6 +58,45 @@ struct GPUSceneData {
 };
 
 
+struct RenderObject {
+	uint32_t indexCount;
+	uint32_t firstIndex;
+	VkBuffer indexBuffer;
+
+	MaterialInstance* material;
+	glm::mat4 transform;
+	VkDeviceAddress vertexBufferAddress;
+};
+
+struct GLTFMetalic_Roughness {
+	MaterialPipeline opaquePipeline;
+	MaterialPipeline transparentPipeline;
+
+	VkDescriptorSetLayout materialLayout;
+
+	struct MaterialConstants {
+		glm::vec4 colorFactors;
+		glm::vec4 metal_rough_factors;
+		//padding , we need it for the uniform buffers
+		glm::vec4 extra[14];
+	};
+
+	struct MaterialResources {
+		AllocatedImage colorImage;
+		VkSampler colorSampler;
+		AllocatedImage metalRoughImage;
+		VkSampler metalRoughSampler;
+		VkBuffer dataBuffer;
+		uint32_t dataBufferOffset;
+	};
+	DescriptorWriter writer;
+
+	void build_pipeline(VulkanEngine* engine);
+	void clear_resources(VkDevice device);
+
+	MaterialInstance write_material(VkDevice device, MaterialPass pass, const MaterialResources& resources, DescriptorAllocatorGrowable& descriptorAllocator);
+};
+
 constexpr unsigned int FRAME_OVERLAP = 2;
 
 class VulkanEngine {
@@ -169,6 +208,10 @@ public:
 
 	VkDescriptorSetLayout _singleImageDescriptorLayout;
 
+	//Materials
+	MaterialInstance defaultData;
+	GLTFMetalic_Roughness metalRoughMaterial;
+
 private:
 	void init_vulkan();
 	void init_swapchain();
@@ -182,4 +225,5 @@ private:
 	void init_imgui();
 
 	DeletionQueue _mainDeletionQueue;
+
 };
