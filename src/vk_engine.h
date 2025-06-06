@@ -52,23 +52,12 @@ struct GPUSceneData {
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::mat4 viewproj;
-	glm::mat4 ambientColor;
-	glm::mat4 sunlightDirection;
-	glm::mat4 sunlightCOlor;
+	glm::vec4 ambientColor;
+	glm::vec4 sunlightDirection;
+	glm::vec4 sunlightColor;
 };
 
-
-struct RenderObject {
-	uint32_t indexCount;
-	uint32_t firstIndex;
-	VkBuffer indexBuffer;
-
-	MaterialInstance* material;
-	glm::mat4 transform;
-	VkDeviceAddress vertexBufferAddress;
-};
-
-struct GLTFMetalic_Roughness {
+struct GLTFMetallic_Roughness {
 	MaterialPipeline opaquePipeline;
 	MaterialPipeline transparentPipeline;
 
@@ -77,7 +66,7 @@ struct GLTFMetalic_Roughness {
 	struct MaterialConstants {
 		glm::vec4 colorFactors;
 		glm::vec4 metal_rough_factors;
-		//padding , we need it for the uniform buffers
+		//padding, we need it anyway for uniform buffers
 		glm::vec4 extra[14];
 	};
 
@@ -89,13 +78,38 @@ struct GLTFMetalic_Roughness {
 		VkBuffer dataBuffer;
 		uint32_t dataBufferOffset;
 	};
+
 	DescriptorWriter writer;
 
-	void build_pipeline(VulkanEngine* engine);
+	void build_pipelines(VulkanEngine* engine);
 	void clear_resources(VkDevice device);
 
 	MaterialInstance write_material(VkDevice device, MaterialPass pass, const MaterialResources& resources, DescriptorAllocatorGrowable& descriptorAllocator);
 };
+
+//Node stuff
+struct MeshNode : public Node {
+
+	std::shared_ptr<MeshAsset> mesh;
+
+	virtual void Draw(const glm::mat4& topMatrix, DrawContext& ctx) override;
+};
+
+struct RenderObject {
+	uint32_t indexCount;
+	uint32_t firstIndex;
+	VkBuffer indexBuffer;
+
+	MaterialInstance* material;
+
+	glm::mat4 transform;
+	VkDeviceAddress vertexBufferAddress;
+};
+
+struct DrawContext {
+	std::vector<RenderObject> OpaqueSurfaces;
+};
+
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
@@ -139,7 +153,7 @@ public:
 	float renderScale = 1.0f;
 
 
-	DescriptorAllocator globalDescriptorAllocator;
+	DescriptorAllocatorGrowable globalDescriptorAllocator;
 	VkDescriptorSet _drawImageDescriptors;
 	VkDescriptorSetLayout _drawImageDescriptorLayout;
 
@@ -206,11 +220,17 @@ public:
 	VkSampler _defaultSamplerLinear;
 	VkSampler _defaultSamplerNearest;
 
+	//materials
+	MaterialInstance defaultData;
+	GLTFMetallic_Roughness metalRoughMaterial;
+
 	VkDescriptorSetLayout _singleImageDescriptorLayout;
 
-	//Materials
-	MaterialInstance defaultData;
-	GLTFMetalic_Roughness metalRoughMaterial;
+	//Node
+	DrawContext mainDrawContext;
+	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
+
+	void update_scene();
 
 private:
 	void init_vulkan();
@@ -225,5 +245,4 @@ private:
 	void init_imgui();
 
 	DeletionQueue _mainDeletionQueue;
-
 };
