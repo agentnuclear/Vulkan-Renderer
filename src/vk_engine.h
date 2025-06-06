@@ -6,6 +6,7 @@
 #include <vk_loader.h>
 #include <vk_types.h>
 #include <vk_descriptors.h>
+#include <camera.h>
 
 
 struct DeletionQueue {
@@ -231,6 +232,9 @@ public:
 	std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
 
 	void update_scene();
+
+	//Camera
+	Camera mainCamera;
 
 private:
 	void init_vulkan();
