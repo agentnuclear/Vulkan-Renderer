@@ -85,6 +85,14 @@ void VulkanEngine::init()
     mainCamera.pitch = 0;
     mainCamera.yaw = 0;
     
+    std::string structurePath = { "../../shaders/structure.glb" };
+    auto structureFile = loadGltf(this, structurePath);
+    if (!structureFile.has_value()) {
+        fmt::print("❌ Failed to load GLTF file: {}\n", structurePath);
+        std::exit(3);
+    }
+
+    loadedScenes["structure"] = *structureFile;
 }
 
 
@@ -104,18 +112,8 @@ void VulkanEngine::update_scene()
     sceneData.view = view;
     sceneData.proj = projection;
     sceneData.viewproj = projection * view;
-
-    mainDrawContext.OpaqueSurfaces.clear();
-
-    loadedNodes["Suzanne"]->Draw(glm::mat4{ 1.f }, mainDrawContext);
-
-    /*for (int x = -3; x < 3; x++) {
-
-        glm::mat4 scale = glm::scale(glm::vec3{ 0.2 });
-        glm::mat4 translation = glm::translate(glm::vec3{ x, 1, 0 });
-
-        loadedNodes["Cube"]->Draw(translation * scale, mainDrawContext);
-    }*/
+    
+    loadedScenes["structure"]->Draw(glm::mat4{ 1.f }, mainDrawContext);
 
 
     //some default lighting parameters
@@ -150,13 +148,25 @@ void VulkanEngine::init_vulkan()
     features12.bufferDeviceAddress = true;
     features12.descriptorIndexing = true;
 
+    uint32_t gpuCount = 0;
+    vkEnumeratePhysicalDevices(_instance, &gpuCount, nullptr);
+    std::vector<VkPhysicalDevice> gpus(gpuCount);
+    vkEnumeratePhysicalDevices(_instance, &gpuCount, gpus.data());
+
+    for (VkPhysicalDevice gpu : gpus) {
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(gpu, &props);
+        fmt::println("🔍 GPU found: {} (type: {})", props.deviceName, static_cast<int>(props.deviceType));
+
+    }
     //use vkbootstrap to select GPU
     vkb::PhysicalDeviceSelector selector{ vkb_inst };
     vkb::PhysicalDevice physicalDevice = selector
         .set_minimum_version(1, 3)
-        .set_required_features_13(features)
+         .set_required_features_13(features)
         .set_required_features_12(features12)
         .set_surface(_surface)
+        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
         .select().value();
 
     //create the final vulkan device
@@ -170,6 +180,11 @@ void VulkanEngine::init_vulkan()
     //vkBootstrap for graphics queue
     _graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
     _graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
+
+
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(physicalDevice.physical_device, &props);
+    fmt::println("✅ Selected GPU: {}", props.deviceName);
 
 
     VmaAllocatorCreateInfo allocatorinfo = {};
@@ -532,6 +547,7 @@ void VulkanEngine::cleanup()
     if (_isInitialized) {
 
         vkDeviceWaitIdle(_device);
+        loadedScenes.clear();
         for (int i=0; i < FRAME_OVERLAP; i++) {
             vkDestroyCommandPool(_device, _frames[i]._commandpool, nullptr);
 
@@ -709,7 +725,7 @@ void VulkanEngine::init_mesh_pipeline()
 
 void VulkanEngine::init_default_data()
 {
-    testMeshes = loadGltfMeshes(this, "../../shaders/basicmesh.glb").value();
+    
 
    	//3 default textures, white, grey, black. 1 pixel each
 	uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
@@ -970,7 +986,8 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
     GPUDrawPushConstants push_constants;
     push_constants.worldMatrix = glm::mat4{ 1.0f };
     push_constants.worldMatrix = projection * view;
-    push_constants.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress;
+    //push_constants.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress;
+   
     
     //allocate a new uniform buffer for the scene data
     AllocatedBuffer gpuSceneDataBuffer = create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);

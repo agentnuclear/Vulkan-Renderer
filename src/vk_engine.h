@@ -233,6 +233,8 @@ public:
 
 	void update_scene();
 
+	std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
+
 	//Camera
 	Camera mainCamera;
 
