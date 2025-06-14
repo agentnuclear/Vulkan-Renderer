@@ -88,7 +88,7 @@ void VulkanEngine::init()
     std::string structurePath = { "../../shaders/structure.glb" };
     auto structureFile = loadGltf(this, structurePath);
     if (!structureFile.has_value()) {
-        fmt::print("❌ Failed to load GLTF file: {}\n", structurePath);
+        fmt::print(" Failed to load GLTF file: {}\n", structurePath);
         std::exit(3);
     }
 
@@ -121,6 +121,79 @@ void VulkanEngine::update_scene()
     sceneData.sunlightColor = glm::vec4(1.f);
     sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
 }
+
+void VulkanEngine::PrintAllGPUDetails(VkInstance instance, VkSurfaceKHR surface)
+{
+    uint32_t gpuCount = 0;
+    vkEnumeratePhysicalDevices(instance, &gpuCount, nullptr);
+    std::vector<VkPhysicalDevice> gpus(gpuCount);
+    vkEnumeratePhysicalDevices(instance, &gpuCount, gpus.data());
+
+    fmt::println(" Total GPUs detected: {}", gpuCount);
+
+    for (VkPhysicalDevice gpu : gpus) {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(gpu, &props);
+
+        VkPhysicalDeviceFeatures2 features2{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+        VkPhysicalDeviceVulkan12Features features12{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+        VkPhysicalDeviceVulkan13Features features13{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+
+        features2.pNext = &features12;
+        features12.pNext = &features13;
+
+        vkGetPhysicalDeviceFeatures2(gpu, &features2);
+
+        const char* deviceTypeStr = "Unknown";
+        switch (props.deviceType) {
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: deviceTypeStr = "Integrated"; break;
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   deviceTypeStr = "Discrete"; break;
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:    deviceTypeStr = "Virtual"; break;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:            deviceTypeStr = "CPU"; break;
+        }
+
+        uint32_t major = VK_VERSION_MAJOR(props.apiVersion);
+        uint32_t minor = VK_VERSION_MINOR(props.apiVersion);
+        uint32_t patch = VK_VERSION_PATCH(props.apiVersion);
+        bool supportsVulkan13 = (major > 1) || (major == 1 && minor >= 3);
+
+        bool surfaceSupported = false;
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, queueFamilies.data());
+
+        for (uint32_t i = 0; i < queueFamilyCount; i++) {
+            VkBool32 supported = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(gpu, i, surface, &supported);
+            if (supported) {
+                surfaceSupported = true;
+                break;
+            }
+        }
+
+        fmt::println(" GPU: {}\n"
+            "   Type: {}\n"
+            "   Vulkan Version: {}.{}.{}\n"
+            "   Supports Vulkan 1.3: {}\n"
+            "   Buffer Device Address: {}\n"
+            "   Descriptor Indexing: {}\n"
+            "   Dynamic Rendering: {}\n"
+            "   Synchronization2: {}\n"
+            "   Surface Supported: {}\n",
+            props.deviceName,
+            deviceTypeStr,
+            major, minor, patch,
+            supportsVulkan13 ? "T" : "F",
+            features12.bufferDeviceAddress ? "T" : "F",
+            features12.descriptorIndexing ? "T" : "F",
+            features13.dynamicRendering ? "T" : "F",
+            features13.synchronization2 ? "T" : "F",
+            surfaceSupported ? "T" : "F"
+        );
+    }
+}
+
 
 void VulkanEngine::init_vulkan()
 {
@@ -162,7 +235,7 @@ void VulkanEngine::init_vulkan()
     //use vkbootstrap to select GPU
     vkb::PhysicalDeviceSelector selector{ vkb_inst };
     vkb::PhysicalDevice physicalDevice = selector
-        .set_minimum_version(1, 3)
+        .set_minimum_version(1, 4)
          .set_required_features_13(features)
         .set_required_features_12(features12)
         .set_surface(_surface)
@@ -193,6 +266,8 @@ void VulkanEngine::init_vulkan()
     allocatorinfo.instance = _instance;
     allocatorinfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaCreateAllocator(&allocatorinfo, &_allocator);
+
+    PrintAllGPUDetails(_instance, _surface);
 
     _mainDeletionQueue.push_function([&]() {
         vmaDestroyAllocator(_allocator);

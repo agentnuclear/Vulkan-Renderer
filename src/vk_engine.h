@@ -239,6 +239,8 @@ public:
 	Camera mainCamera;
 
 private:
+	void PrintAllGPUDetails(VkInstance instance, VkSurfaceKHR surface);
+	VkPhysicalDevice PickDiscreteGPU(VkInstance instance, VkSurfaceKHR surface);
 	void init_vulkan();
 	void init_swapchain();
 	void init_commands();
