@@ -109,6 +109,8 @@ struct RenderObject {
 
 struct DrawContext {
 	std::vector<RenderObject> OpaqueSurfaces;
+	std::vector<RenderObject> TransparentSurfaces;
+
 };
 
 
@@ -240,7 +242,6 @@ public:
 
 private:
 	void PrintAllGPUDetails(VkInstance instance, VkSurfaceKHR surface);
-	VkPhysicalDevice PickDiscreteGPU(VkInstance instance, VkSurfaceKHR surface);
 	void init_vulkan();
 	void init_swapchain();
 	void init_commands();
