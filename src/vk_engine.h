@@ -102,7 +102,7 @@ struct RenderObject {
 	VkBuffer indexBuffer;
 
 	MaterialInstance* material;
-
+	Bounds bounds;
 	glm::mat4 transform;
 	VkDeviceAddress vertexBufferAddress;
 };
@@ -111,6 +111,14 @@ struct DrawContext {
 	std::vector<RenderObject> OpaqueSurfaces;
 	std::vector<RenderObject> TransparentSurfaces;
 
+};
+
+struct EngineStats {
+	float frametime;
+	int triangle_count;
+	int drawcall_count;
+	float scene_update_time;
+	float mesh_draw_time;
 };
 
 
@@ -123,7 +131,7 @@ public:
 	int _frameNumber {0};
 	bool stop_rendering{ false };
 	VkExtent2D _windowExtent{ 1000 , 650 };
-	bool bUseValidationLayers = true;
+	bool bUseValidationLayers = false;
 
 	VkInstance _instance; // Vulkan Lib Handle
 	VkDebugUtilsMessengerEXT _debug_messenger; //Vulkan debug output handle
@@ -240,6 +248,9 @@ public:
 	//Camera
 	Camera mainCamera;
 
+	//Stats
+	EngineStats stats;
+
 private:
 	void PrintAllGPUDetails(VkInstance instance, VkSurfaceKHR surface);
 	void init_vulkan();
@@ -255,3 +266,5 @@ private:
 
 	DeletionQueue _mainDeletionQueue;
 };
+
+bool is_visible(const RenderObject& obj, const glm::mat4& viewproj);

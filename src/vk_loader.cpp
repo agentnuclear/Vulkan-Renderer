@@ -35,7 +35,7 @@ std::optional<AllocatedImage> load_image(VulkanEngine* engine, fastgltf::Asset& 
                 imagesize.height = height;
                 imagesize.depth = 1;
 
-                newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+                newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
                 stbi_image_free(data);
                 }
@@ -48,7 +48,7 @@ std::optional<AllocatedImage> load_image(VulkanEngine* engine, fastgltf::Asset& 
                 imagesize.height = height;
                 imagesize.depth = 1;
 
-                newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+                newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
                 stbi_image_free(data);
             }
@@ -69,7 +69,7 @@ std::optional<AllocatedImage> load_image(VulkanEngine* engine, fastgltf::Asset& 
                         imagesize.height = height;
                         imagesize.depth = 1;
 
-                        newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+                        newImage = engine->create_image(data, imagesize, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
                         stbi_image_free(data);
                     }
@@ -343,6 +343,18 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(VulkanEngine* engine, std::s
                 else {
                     newsurface.material = materials[0];
                 }
+
+                //loop the vertices of this surface, find min/max bounds
+                glm::vec3 minpos = vertices[initial_vtx].position;
+                glm::vec3 maxpos = vertices[initial_vtx].position;
+                for (int i = initial_vtx; i < vertices.size(); i++) {
+                    minpos = glm::min(minpos, vertices[i].position);
+                    maxpos = glm::max(maxpos, vertices[i].position);
+                }
+                //calculate origin and extents from the min/max, use extent length for radius
+                newsurface.bounds.origin = (maxpos + minpos) / 2.f;
+                newsurface.bounds.extents = (maxpos - minpos) / 2.f;
+                newsurface.bounds.sphereRadius = glm::length(newsurface.bounds.extents);
 
                 newmesh->surfaces.push_back(newsurface);
             }
